@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Aplicación de Historia Bangkit</string>
+    <string name="logout">Cerrar sesión</string>
+    <string name="login_title">Inicia sesión en tu cuenta</string>
+    <string name="register_title">Crea tu cuenta</string>
+    <string name="or">O Regístrate</string>
+    <string name="enter_your_text_here">Introduce tu texto aquí</string>
+    <string name="btn_camera">Cámara</string>
+    <string name="btn_gallery">Galería</string>
+    <string name="btn_post">Publicar</string>
+    <string name="tvUsername">Nombre de usuario</string>
+    <string name="tvDesc">Descripción</string>
+    <string name="btnLogin">Iniciar sesión</string>
+    <string name="btnGoRegister">Registrarse</string>
+    <string name="tvNoInternet">Sin Internet</string>
+    <string name="btnRegister">Registrarse</string>
+    <string name="edtName">Nombre</string>
+    <string name="tvUsername_item">Nombre de usuario</string>
+</resources>

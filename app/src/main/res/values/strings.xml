@@ -1,0 +1,19 @@
+<resources>
+    <string name="app_name">Story of Bangkit App</string>
+    <string name="logout">Keluar</string>
+    <string name="login_title">Masuk ke Akun Anda</string>
+    <string name="register_title">Buat Akun Anda</string>
+    <string name="or">Atau Daftar</string>
+    <string name="enter_your_text_here">Masukkan teks Anda di sini</string>
+    <string name="btn_camera">Kamera</string>
+    <string name="btn_gallery">Galeri</string>
+    <string name="btn_post">Kirim</string>
+    <string name="tvUsername">Nama Pengguna</string>
+    <string name="tvDesc">Deskripsi</string>
+    <string name="btnLogin">Masuk</string>
+    <string name="btnGoRegister">Daftar</string>
+    <string name="tvNoInternet">Tidak Ada Internet</string>
+    <string name="btnRegister">Daftar</string>
+    <string name="edtName">Nama</string>
+    <string name="tvUsername_item">Nama Pengguna</string>
+</resources>
