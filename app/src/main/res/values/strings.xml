@@ -16,4 +16,5 @@
     <string name="btnRegister">Daftar</string>
     <string name="edtName">Nama</string>
     <string name="tvUsername_item">Nama Pengguna</string>
+    <string name="title_activity_maps">MapsActivity</string>
 </resources>

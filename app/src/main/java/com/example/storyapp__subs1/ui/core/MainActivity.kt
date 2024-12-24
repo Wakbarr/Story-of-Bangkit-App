@@ -12,6 +12,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.example.storyapp__subs1.MapsActivity
 import com.example.storyapp__subs1.R
 import com.example.storyapp__subs1.data.repository.UserViewModelFactory
 import com.example.storyapp__subs1.data.respons.ListStoryItem
@@ -128,6 +129,10 @@ class MainActivity : AppCompatActivity() {
         when (item.itemId) {
             R.id.logout_option -> {
                 viewModel.logout()
+            }
+            R.id.map -> {
+                val intent = Intent(this, MapsActivity::class.java)
+                startActivity(intent)
             }
         }
         return super.onOptionsItemSelected(item)
