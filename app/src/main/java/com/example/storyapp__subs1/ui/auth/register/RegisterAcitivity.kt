@@ -11,6 +11,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.ViewModelProvider
 import com.example.storyapp__subs1.R
 import com.example.storyapp__subs1.databinding.FragmentRegisterAcitivityBinding
 import com.example.storyapp__subs1.ui.auth.login.LoginActivity
@@ -25,7 +26,7 @@ class RegisterAcitivity : AppCompatActivity() {
         binding = FragmentRegisterAcitivityBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-
+        viewModel = ViewModelProvider(this).get(RegisterViewModel::class.java)
         if (savedInstanceState != null) {
             val savedEmail = savedInstanceState.getString("email")
             val savedPassword = savedInstanceState.getString("password")
