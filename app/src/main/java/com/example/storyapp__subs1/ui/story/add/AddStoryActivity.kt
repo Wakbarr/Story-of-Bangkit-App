@@ -3,6 +3,7 @@ package com.example.storyapp__subs1.ui.story.add
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.location.Location
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -13,127 +14,86 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.example.storyapp__subs1.R
-import com.example.storyapp__subs1.data.repository.UserViewModelFactory
+import com.example.storyapp__subs1.data.repository.Result
+import com.example.storyapp__subs1.data.respons.AddStoryRespons
 import com.example.storyapp__subs1.databinding.ActivityAddStoryBinding
 import com.example.storyapp__subs1.ui.core.MainActivity
 import com.example.storyapp__subs1.utils.getImageUri
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.maps.model.LatLng
 
 class AddStoryActivity : AppCompatActivity() {
 
-    companion object {
-        private const val REQUIRED_PERMISSION = Manifest.permission.CAMERA
-    }
-
     private lateinit var binding: ActivityAddStoryBinding
-    var token = ""
+    private val viewModel by viewModels<AddStoryViewModel> { ViewModelFactory(this) }
+    private lateinit var fusedLocationClient: FusedLocationProviderClient
 
-    private val viewModel by viewModels<AddStoryViewModel> {
-        UserViewModelFactory.getInstance(this)
-    }
-
-
+    // Request for permissions
     private val requestPermissionLauncher =
-        registerForActivityResult(
-            ActivityResultContracts.RequestPermission()
-        ) { isGranted: Boolean ->
-            if (isGranted) {
-                Toast.makeText(this, "Permission request granted", Toast.LENGTH_LONG).show()
-            } else {
-                Toast.makeText(this, "Permission request denied", Toast.LENGTH_LONG).show()
-            }
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
+            val message = if (isGranted) "Permission request granted" else "Permission request denied"
+            Toast.makeText(this, message, Toast.LENGTH_LONG).show()
         }
 
     private fun allPermissionsGranted() =
-        ContextCompat.checkSelfPermission(
-            this,
-            REQUIRED_PERMISSION
-        ) == PackageManager.PERMISSION_GRANTED
+        ContextCompat.checkSelfPermission(this, REQUIRED_PERMISSION) == PackageManager.PERMISSION_GRANTED
+
+    private var token = ""
+    private var lat = 0.0
+    private var lon = 0.0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Initialize binding
         binding = ActivityAddStoryBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        // Enable location and permissions
+        enableMyLocation()
 
-        viewModel.currentImageUri?.let {
-            showImage()
+        // Restore description if any
+        savedInstanceState?.getString("desc")?.let {
+            binding.edAddDescription.setText(it)
         }
 
-
-        if (savedInstanceState != null) {
-            val savedDesc = savedInstanceState.getString("desc")
-
-            if (savedDesc != null) {
-                binding.edAddDescription.setText(savedDesc)
-            }
-        }
-
+        // Request camera permission if not granted
         if (!allPermissionsGranted()) {
             requestPermissionLauncher.launch(REQUIRED_PERMISSION)
         }
 
-
+        // Initial progress bar visibility
         binding.progressBar.visibility = View.GONE
 
-        binding.buttonGallery.setOnClickListener {
-            startGallery()
-        }
+        // Setup image picker actions
+        binding.buttonGallery.setOnClickListener { startGallery() }
+        binding.buttonCamera.setOnClickListener { startCamera() }
 
-        binding.buttonCamera.setOnClickListener {
-            startCamera()
-        }
-
+        // Observe session to get token
         viewModel.getSession().observe(this) { user ->
             token = "Bearer ${user.token}"
         }
 
+        // Handle "Add Story" button click
         binding.buttonAdd.setOnClickListener {
-            var description = binding.edAddDescription.text.toString()
+            val description = binding.edAddDescription.text.toString()
 
-            if (description.isEmpty()) {
-                showToast("Please Add Image Description")
-            } else if (viewModel.currentImageUri == null) {
-                showToast("Please Add Your Image")
-
-            } else if (description.isEmpty() && viewModel.currentImageUri == null) {
-                showToast("Please Add Your Image & Description")
-            } else if (!description.isEmpty() && viewModel.currentImageUri != null) {
-                viewModel.uploadImage(description, this, token)
-            }
-
-        }
-
-        viewModel.message.observe(this) { message ->
-            message?.let {
-                showToast(it)
+            when {
+                description.isEmpty() -> showToast("Please Add Image Description")
+                viewModel.currentImageUri == null -> showToast("Please Add Your Image")
+                binding.switchEnableLocation.isChecked -> uploadStoryWithLocation(description)
+                else -> uploadStoryWithoutLocation(description)
             }
         }
 
-        viewModel.isSuccess.observe(this) { it ->
-
-            if (it == true) {
-                intent = Intent(this, MainActivity::class.java)
-                intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK
-                startActivity(intent)
-
-            }
-
-        }
-
-        viewModel.isLoading.observe(this) { loadingState ->
-            if (loadingState == true) {
-                binding.progressBar.visibility = View.VISIBLE
-            } else {
-                binding.progressBar.visibility = View.GONE
-            }
-        }
-
-
+        // Apply padding for edge-to-edge design
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
@@ -141,51 +101,84 @@ class AddStoryActivity : AppCompatActivity() {
         }
     }
 
-
-    override fun onSaveInstanceState(outState: Bundle) {
-        super.onSaveInstanceState(outState)
-        outState.putString("desc", binding.edAddDescription.text.toString())
-    }
-
-    override fun onRestoreInstanceState(savedInstanceState: Bundle) {
-        super.onRestoreInstanceState(savedInstanceState)
-        val savedDesc = savedInstanceState.getString("desc")
-
-        if (savedDesc != null) {
-            binding.edAddDescription.setText(savedDesc)
+    private fun enableMyLocation() {
+        if (ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED ||
+            ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
+                LOCATION_PERMISSION_REQUEST_CODE
+            )
+            return
         }
 
+        setupLocationClient()
+
+        fusedLocationClient.lastLocation.addOnSuccessListener { location: Location? ->
+            location?.let {
+                lat = it.latitude
+                lon = it.longitude
+            }
+        }
     }
 
+    private fun setupLocationClient() {
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+    }
+
+    private fun uploadStoryWithLocation(description: String) {
+        viewModel.getUploadStory(description, this, token, viewModel.currentImageUri!!, lat, lon).observe(this) { result ->
+            handleResult(result)
+        }
+    }
+
+    private fun uploadStoryWithoutLocation(description: String) {
+        viewModel.getUploadStoryWithoutLoc(description, this, token, viewModel.currentImageUri!!).observe(this) { result ->
+            handleResult(result)
+        }
+    }
+
+    private fun handleResult(result: Result<AddStoryRespons>) {
+        when (result) {
+            is Result.Loading -> binding.progressBar.visibility = View.VISIBLE
+            is Result.Success -> {
+                binding.progressBar.visibility = View.GONE
+                showToast(result.data.message)
+                finish()
+            }
+            is Result.Error -> {
+                binding.progressBar.visibility = View.GONE
+                showToast(result.error)
+            }
+        }
+    }
     private fun startGallery() {
         launcherGallery.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
     }
 
-    private val launcherGallery = registerForActivityResult(
-        ActivityResultContracts.PickVisualMedia()
-    ) { uri: Uri? ->
-        if (uri != null) {
+    private val launcherGallery = registerForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri: Uri? ->
+        uri?.let {
             viewModel.currentImageUri = uri
             showImage()
-
-        } else {
-            Log.d("Photo Picker", "No media selected")
         }
     }
-
 
     private fun startCamera() {
         viewModel.currentImageUri = getImageUri(this)
         launcherIntentCamera.launch(viewModel.currentImageUri!!)
     }
 
-    private val launcherIntentCamera = registerForActivityResult(
-        ActivityResultContracts.TakePicture()
-    ) { isSuccess ->
+    private val launcherIntentCamera = registerForActivityResult(ActivityResultContracts.TakePicture()) { isSuccess ->
         if (isSuccess) {
             showImage()
         } else {
-            // User canceled or image capture failed
             viewModel.currentImageUri = null
             Toast.makeText(this, "Image capture failed", Toast.LENGTH_SHORT).show()
         }
@@ -193,7 +186,6 @@ class AddStoryActivity : AppCompatActivity() {
 
     private fun showImage() {
         viewModel.currentImageUri?.let { uri ->
-            Log.d("Image URI", "showImage: $uri")
             binding.imageViewAddStory.setImageURI(uri)
         }
     }
@@ -202,4 +194,8 @@ class AddStoryActivity : AppCompatActivity() {
         Toast.makeText(this, message, Toast.LENGTH_LONG).show()
     }
 
+    companion object {
+        private const val REQUIRED_PERMISSION = Manifest.permission.CAMERA
+        private const val LOCATION_PERMISSION_REQUEST_CODE = 1
+    }
 }

@@ -40,9 +40,27 @@ interface ApiService {
         @Header("Authorization") token: String
     ): Call<StoryRespons>
 
+    @GET("stories")
+    suspend fun getAllPagingStories(
+        @Query("page") page: Int? = null,
+        @Query("size") size: Int? = null,
+        @Query("location") location: Int = 0,
+        @Header("Authorization") token: String
+    ): StoryRespons
+
     @Multipart
     @POST("stories")
-    fun postImage(
+    fun postStory(
+        @Part file: MultipartBody.Part,
+        @Part("description") description: RequestBody,
+        @Part("lat") lat: RequestBody,
+        @Part("lon") lon: RequestBody,
+        @Header("Authorization") token: String
+    ): Call<AddStoryRespons>
+
+    @Multipart
+    @POST("stories")
+    fun postStoryWithLoc(
         @Part file: MultipartBody.Part,
         @Part("description") description: RequestBody,
         @Header("Authorization") token: String

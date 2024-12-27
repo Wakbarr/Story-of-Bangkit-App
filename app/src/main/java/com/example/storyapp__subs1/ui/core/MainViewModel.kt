@@ -1,77 +1,48 @@
 package com.example.storyapp__subs1.ui.core
 
-import android.util.Log
+import android.content.Context
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.asLiveData
 import androidx.lifecycle.viewModelScope
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
 import com.example.storyapp__subs1.data.preferensi.Model
-import com.example.storyapp__subs1.data.remote.Api
-import com.example.storyapp__subs1.data.repository.Repouser
+import com.example.storyapp__subs1.data.repository.UserStoryRepo
 import com.example.storyapp__subs1.data.respons.ListStoryItem
-import com.example.storyapp__subs1.data.respons.StoryRespons
+import com.example.storyapp__subs1.di.Inject
 import kotlinx.coroutines.launch
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
 
-class MainViewModel(private val repository: Repouser) : ViewModel() {
+class MainViewModel(private val userStoryRepository: UserStoryRepo) : ViewModel() {
+
+    fun logout() {
+        viewModelScope.launch {
+            userStoryRepository.logout()
+        }
+    }
+
+
+    fun getSession(): LiveData<Model> {
+        return userStoryRepository.getSession().asLiveData()
+    }
 
     private val _isLoading = MutableLiveData<Boolean>()
     val isLoading: LiveData<Boolean> = _isLoading
 
-    private val _stories = MutableLiveData<List<ListStoryItem>>()
-    val stories: LiveData<List<ListStoryItem>> = _stories
-
-
-    private val _message = MutableLiveData<String>()
-    val message: LiveData<String> = _message
-
-    fun getSession(): LiveData<Model> {
-        return repository.getSession().asLiveData()
-    }
-
-    fun logout() {
-        viewModelScope.launch {
-            repository.logout()
-        }
-    }
-
-    fun getStories(token: String) {
+    fun getPagingStories(token: String): LiveData<PagingData<ListStoryItem>> {
         _isLoading.value = true
-        viewModelScope.launch {
-            val client = Api.getApiService().getAllStories(null, null, 0, token)
-            client.enqueue(object : Callback<StoryRespons> {
-                override fun onResponse(
-                    call: Call<StoryRespons>,
-                    response: Response<StoryRespons>
-                ) {
-                    if (response.isSuccessful) {
-                        _isLoading.value = false
-                        val storiesRequest = response.body()
-                        if (storiesRequest != null && !storiesRequest.error) {
-                            Log.d("storiesRequest", "Fetch Stories Success: ${storiesRequest.message}")
-                            _stories.value = storiesRequest.listStory
-                            _message.value = storiesRequest.message
-                        } else {
-                            Log.d("storiesRequest", "storiesRequest: ${storiesRequest?.message}")
-                            _message.value = storiesRequest?.message
-                        }
-                    } else {
-                        _isLoading.value = false
-                        Log.d("storiesRequest", "storiesRequest: ${response.message()}")
-                        _message.value = "Error Occur, Try Again Later"
-                    }
-                }
+        return userStoryRepository.getPagingStories(token).cachedIn(viewModelScope)
+    }
+}
 
-
-                override fun onFailure(call: Call<StoryRespons>, t: Throwable) {
-                    _isLoading.value = false
-                    Log.e("storiesRequest", "Error: ${t.message}")
-                    _message.value = "Error: No Internet"
-                }
-            })
+class ViewModelFactory(private val context: Context) : ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(MainViewModel::class.java)) {
+            @Suppress("UNCHECKED_CAST")
+            return MainViewModel(Inject.provideRepouser(context)) as T
         }
+        throw IllegalArgumentException("Unknown ViewModel class")
     }
 }

@@ -11,7 +11,7 @@ import com.example.storyapp__subs1.R
 import com.example.storyapp__subs1.databinding.ActivityStoryDetailBinding
 import com.example.storyapp__subs1.ui.story.StoryModel
 
-class DetailStoryActivity : AppCompatActivity() {
+class DetailStoryAcitivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityStoryDetailBinding
 
@@ -26,19 +26,19 @@ class DetailStoryActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         val storyData = if (Build.VERSION.SDK_INT >= 33) {
-            intent.getParcelableExtra(STORY_KEY, StoryModel::class.java)
+            intent.getParcelableExtra<StoryModel>(STORY_KEY, StoryModel::class.java)
         } else {
             @Suppress("DEPRECATION")
-            intent.getParcelableExtra(STORY_KEY)
+            intent.getParcelableExtra<StoryModel>(STORY_KEY)
         }
 
-        storyData?.let {
+        if (storyData != null) {
             Glide.with(this)
-                .load(it.photoUrl)
+                .load(storyData.photoUrl)
                 .into(binding.storyPhoto)
 
-            binding.textViewName.text = it.name
-            binding.textViewDesc.text = it.desc
+            binding.textViewName.text = storyData.name
+            binding.textViewDesc.text = storyData.desc
         }
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->

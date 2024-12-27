@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     id("com.google.devtools.ksp")
     id("kotlin-parcelize")
+    alias(libs.plugins.google.android.libraries.mapsplatform.secrets.gradle.plugin)
 }
 
 android {
@@ -61,5 +62,25 @@ dependencies {
     implementation(libs.glide)
     implementation(libs.retrofit)
     implementation(libs.converter.gson)
-    implementation(libs.logging.interceptor) 
+    implementation(libs.logging.interceptor)
+
+    implementation (libs.kotlinx.coroutines.android.v152)
+    implementation (libs.play.services.maps)
+    implementation (libs.play.services.location)
+    implementation (libs.androidx.espresso.idling.resource)
+
+    implementation(libs.androidx.paging.runtime.ktx)
+
+    testImplementation (libs.mockito.core)
+    testImplementation (libs.mockito.inline)
+    testImplementation (libs.androidx.paging.common)
+    androidTestImplementation(libs.androidx.core.testing)
+    androidTestImplementation(libs.kotlinx.coroutines.test)
+
+    testImplementation(libs.androidx.core.testing.v210)
+    testImplementation(libs.kotlinx.coroutines.test.v161)
+
+    androidTestImplementation (libs.androidx.espresso.intents)
+    androidTestImplementation ("androidx.test.espresso:espresso-contrib:3.6.1")
+
 }

@@ -91,6 +91,16 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
+        <Switch
+            android:id="@+id/switchEnableLocation"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="Include Your Location"
+            app:layout_constraintStart_toStartOf="@+id/textInputLayout_desc"
+            app:layout_constraintTop_toBottomOf="@+id/textInputLayout_desc" />
+
+
     </androidx.constraintlayout.widget.ConstraintLayout>
 
 </ScrollView>

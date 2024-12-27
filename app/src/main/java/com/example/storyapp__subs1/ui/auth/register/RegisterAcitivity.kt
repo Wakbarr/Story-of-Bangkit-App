@@ -5,23 +5,19 @@ import android.animation.ObjectAnimator
 import android.content.Intent
 import android.os.Bundle
 import android.util.Patterns
-import androidx.fragment.app.Fragment
-import android.view.LayoutInflater
 import android.view.View
-import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import androidx.lifecycle.ViewModelProvider
 import com.example.storyapp__subs1.R
 import com.example.storyapp__subs1.databinding.FragmentRegisterAcitivityBinding
 import com.example.storyapp__subs1.ui.auth.login.LoginActivity
 
 class RegisterAcitivity : AppCompatActivity() {
     private lateinit var binding: FragmentRegisterAcitivityBinding
-    private lateinit var ViewModel: RegisterViewModel
+    private lateinit var viewModel: RegisterViewModel
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -52,7 +48,6 @@ class RegisterAcitivity : AppCompatActivity() {
 
         binding.progressBarRegister.visibility = View.GONE
 
-        ViewModel = ViewModelProvider(this).get(RegisterViewModel::class.java)
 
         binding.btnRegister.setOnClickListener {
             val name = binding.edRegisterName.text.toString()
@@ -69,12 +64,12 @@ class RegisterAcitivity : AppCompatActivity() {
             } else if (binding.edRegisterPassword.text.toString().length < 8) {
                 showToast("Password less than 8 Char")
             } else {
-                ViewModel.registerRequest(name, email, password)
+                viewModel.registerRequest(name, email, password)
             }
 
 
 
-            ViewModel.isSuccess.observe(this) { isSuccess ->
+            viewModel.isSuccess.observe(this) { isSuccess ->
 
                 if (isSuccess == true) {
                     val intent = Intent(this@RegisterAcitivity, LoginActivity::class.java)
@@ -86,7 +81,7 @@ class RegisterAcitivity : AppCompatActivity() {
             }
         }
 
-        ViewModel.isLoading.observe(this) { loadingState ->
+        viewModel.isLoading.observe(this) { loadingState ->
             if (loadingState == true) {
                 binding.progressBarRegister.visibility = View.VISIBLE
             } else {
@@ -94,7 +89,7 @@ class RegisterAcitivity : AppCompatActivity() {
             }
         }
 
-        ViewModel.message.observe(this) { message ->
+        viewModel.message.observe(this) { message ->
             message?.let {
                 showToast(it)
             }

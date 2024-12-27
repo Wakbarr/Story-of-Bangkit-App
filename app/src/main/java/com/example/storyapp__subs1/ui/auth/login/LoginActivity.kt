@@ -4,6 +4,7 @@ import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.util.Patterns
 import android.view.View
 import android.widget.Toast
@@ -13,12 +14,12 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
-import com.example.storyapp__subs1.ui.core.MainActivity
 import com.example.storyapp__subs1.R
 import com.example.storyapp__subs1.data.preferensi.Model
-import com.example.storyapp__subs1.data.repository.UserViewModelFactory
+import com.example.storyapp__subs1.data.repository.Result
 import com.example.storyapp__subs1.databinding.FragmentLoginActivityBinding
 import com.example.storyapp__subs1.ui.auth.register.RegisterAcitivity
+import com.example.storyapp__subs1.ui.core.MainActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -26,11 +27,19 @@ import kotlinx.coroutines.withContext
 
 class LoginActivity : AppCompatActivity() {
     private val viewModel by viewModels<LoginViewModel> {
-        UserViewModelFactory.getInstance(this)
+        ViewModelFactory(this)
     }
     private lateinit var binding: FragmentLoginActivityBinding
     private var email = ""
     private var password = ""
+
+    companion object {
+        private const val TAG = "LoginActivity"
+        private const val MIN_PASSWORD_LENGTH = 8
+        private const val ANIMATION_DURATION = 700L
+        private const val FLOAT_ANIMATION_DURATION = 3000L
+        private const val DELAY_BEFORE_MAIN = 1000L
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,97 +47,86 @@ class LoginActivity : AppCompatActivity() {
         binding = FragmentLoginActivityBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        restoreSavedInstanceState(savedInstanceState)
+        setupViews()
+        setupWindowInsets()
+        playAnimation()
+    }
 
-        if (savedInstanceState != null) {
-            val savedEmail = savedInstanceState.getString("email")
-            val savedPassword = savedInstanceState.getString("password")
-
-            if (savedEmail != null) {
+    private fun restoreSavedInstanceState(savedInstanceState: Bundle?) {
+        savedInstanceState?.let { bundle ->
+            bundle.getString("email")?.let { savedEmail ->
                 binding.edLoginEmail.setText(savedEmail)
             }
-
-            if (savedPassword != null) {
+            bundle.getString("password")?.let { savedPassword ->
                 binding.edLoginPassword.setText(savedPassword)
             }
         }
+    }
 
-        playAnimation()
-
-
+    private fun setupViews() {
         binding.progressBarLogin.visibility = View.GONE
 
         binding.btnLogin.setOnClickListener {
-            email = binding.edLoginEmail.text.toString()
-            password = binding.edLoginPassword.text.toString()
-
-            if (binding.edLoginEmail.text.toString().isEmpty() ||
-                binding.edLoginPassword.text.toString().isEmpty()
-            ) {
-                showToast("All field must be filled")
-            } else if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-                showToast("Invalid Email Format")
-            } else if (binding.edLoginPassword.text.toString().length < 8) {
-                showToast("Password less than 8 Char")
-            } else {
-                viewModel.loginRequest(email, password)
-            }
-
-            viewModel.loginValue.observe(this) { loginResponse ->
-                lifecycleScope.launch {
-                    viewModel.saveSession(
-                        Model(
-                            name = loginResponse.name,
-                            userId = loginResponse.userId,
-                            email = email,
-                            token = loginResponse.token,
-                            isLogin = true
-                        )
-                    )
-
-                    delay(1000)
-                    withContext(Dispatchers.Main) {
-                        val intent = Intent(this@LoginActivity, MainActivity::class.java)
-                        intent.flags =
-                            Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK
-                        startActivity(intent)
-                        finish()
-                    }
-                }
-            }
-
-        }
-
-        viewModel.message.observe(this) { message ->
-            message?.let {
-                showToast(it)
-            }
-
-        }
-
-        viewModel.isLoading.observe(this) { loadingState ->
-            if (loadingState == true) {
-                binding.progressBarLogin.visibility = View.VISIBLE
-            } else {
-                binding.progressBarLogin.visibility = View.GONE
-            }
+            handleLogin()
         }
 
         binding.buttonGoRegister.setOnClickListener {
-            intent = Intent(this, RegisterAcitivity::class.java)
-            startActivity(intent)
+            navigateToRegister()
         }
+    }
 
+    private fun handleLogin() {
+        email = binding.edLoginEmail.text.toString()
+        password = binding.edLoginPassword.text.toString()
 
+        when {
+            email.isEmpty() || password.isEmpty() -> {
+                showToast("All fields must be filled")
+            }
+            !Patterns.EMAIL_ADDRESS.matcher(email).matches() -> {
+                showToast("Invalid Email Format")
+            }
+            password.length < MIN_PASSWORD_LENGTH -> {
+                showToast("Password less than 8 characters")
+            }
+            else -> {
+                performLogin()
+            }
+        }
+    }
 
+    private fun performLogin() {
+        viewModel.loginRequest(email, password).observe(this) { result ->
+            when (result) {
+                is Result.Loading -> {
+                    Log.d(TAG, "Loading stories...")
+                    binding.progressBarLogin.visibility = View.VISIBLE
+                }
+                is Result.Success -> {
+                    binding.progressBarLogin.visibility = View.GONE
+                    val loginData = result.data
+                    saveSession(loginData.name, loginData.userId, loginData.token)
+                }
+                is Result.Error -> {
+                    binding.progressBarLogin.visibility = View.GONE
+                    Log.e(TAG, "Error: ${result.error}")
+                    showToast(result.error)
+                }
+            }
+        }
+    }
 
+    private fun navigateToRegister() {
+        startActivity(Intent(this, RegisterAcitivity::class.java))
+    }
 
-
+    private fun setupWindowInsets() {
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
-
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -137,59 +135,58 @@ class LoginActivity : AppCompatActivity() {
         outState.putString("password", binding.edLoginPassword.text.toString())
     }
 
-    override fun onRestoreInstanceState(savedInstanceState: Bundle) {
-        super.onRestoreInstanceState(savedInstanceState)
-        val savedEmail = savedInstanceState.getString("email")
-        val savedPassword = savedInstanceState.getString("password")
-
-        if (savedEmail != null) {
-            binding.edLoginEmail.setText(savedEmail)
-        }
-
-        if (savedPassword != null) {
-            binding.edLoginPassword.setText(savedPassword)
-        }
-    }
-
-
     private fun showToast(message: String) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }
 
+    private fun saveSession(name: String, userId: String, token: String) {
+        lifecycleScope.launch {
+            viewModel.saveSession(
+                Model(
+                    name = name,
+                    userId = userId,
+                    email = email,
+                    token = token,
+                    isLogin = true
+                )
+            )
+
+            delay(DELAY_BEFORE_MAIN)
+            withContext(Dispatchers.Main) {
+                val intent = Intent(this@LoginActivity, MainActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                startActivity(intent)
+                finish()
+            }
+        }
+    }
 
     private fun playAnimation() {
-
+        // Floating animation
         ObjectAnimator.ofFloat(binding.imageViewLogin, View.TRANSLATION_Y, -50f, 50f).apply {
-            duration = 3000
+            duration = FLOAT_ANIMATION_DURATION
             repeatCount = ObjectAnimator.INFINITE
             repeatMode = ObjectAnimator.REVERSE
-        }.start()
+            start()
+        }
 
-        val titleText =
-            ObjectAnimator.ofFloat(binding.textViewTitleLogin, View.ALPHA, 1f).setDuration(700)
-        val emailEditText =
-            ObjectAnimator.ofFloat(binding.textInputEmail, View.ALPHA, 1f).setDuration(700)
-        val passwordEditText =
-            ObjectAnimator.ofFloat(binding.textInputPassword, View.ALPHA, 1f).setDuration(700)
-
-        val buttonLogin = ObjectAnimator.ofFloat(binding.btnLogin, View.ALPHA, 1f).setDuration(700)
-
-        val textOr =
-            ObjectAnimator.ofFloat(binding.textViewOrRegister, View.ALPHA, 1f).setDuration(700)
-
-        val buttonGoRegister =
-            ObjectAnimator.ofFloat(binding.buttonGoRegister, View.ALPHA, 1f).setDuration(700)
-
+        // Fade in animations
+        val animations = listOf(
+            binding.textViewTitleLogin,
+            binding.textInputEmail,
+            binding.textInputPassword,
+            binding.btnLogin,
+            binding.textViewOrRegister,
+            binding.buttonGoRegister
+        ).map { view ->
+            ObjectAnimator.ofFloat(view, View.ALPHA, 1f).apply {
+                duration = ANIMATION_DURATION
+            }
+        }
 
         AnimatorSet().apply {
-            playSequentially(
-                titleText,
-                emailEditText,
-                passwordEditText,
-                buttonLogin,
-                textOr,
-                buttonGoRegister
-            )
+            playSequentially(*animations.toTypedArray())
             start()
         }
     }
